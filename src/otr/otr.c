@@ -606,7 +606,8 @@ static enum otr_msg_status enqueue_otr_fragment(const char *msg, struct otr_peer
 	msg_len = strlen(msg);
 
 	if (opc->full_msg) {
-		if (msg_len > (opc->msg_size - opc->msg_len)) {
+		if (msg_len > (opc->msg_size - opc->msg_len) ||
+		    opc->msg_len + msg_len + 1 > OTR_MSG_MAX_SIZE) {
 			char *tmp_ptr;
 
 			/* Realloc memory if there is not enough space. */
@@ -659,6 +660,12 @@ static enum otr_msg_status enqueue_otr_fragment(const char *msg, struct otr_peer
 		 */
 		pos = strstr(msg, OTR_MSG_BEGIN_TAG);
 		if (pos && (pos == msg) && msg[msg_len - 1] != OTR_MSG_END_TAG) {
+			/* Reject oversized initial fragment. */
+			if ((msg_len * 2) + 1 > OTR_MSG_MAX_SIZE) {
+				ret = OTR_MSG_ERROR;
+				return ret;
+			}
+
 			/* Allocate full message buffer with an extra for NULL byte. */
 			opc->full_msg = g_new0(char, (msg_len * 2) + 1);
 			if (!opc->full_msg) {

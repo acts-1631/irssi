@@ -54,6 +54,13 @@
 #define OTR_MSG_BEGIN_TAG             "?OTR:"
 #define OTR_MSG_END_TAG               '.'
 
+/* Maximum size of an assembled multi-fragment OTR message. The OTR protocol
+ * does not bound this; a malicious peer can keep sending fragments without
+ * the end tag and grow the per-peer reassembly buffer without limit.
+ * 256 KiB is well above any legitimate OTR message and bounds the worst-case
+ * memory use per peer context. */
+#define OTR_MSG_MAX_SIZE              (256 * 1024)
+
 /* IRC /me command marker and len. */
 #define OTR_IRC_MARKER_ME             "/me "
 #define OTR_IRC_MARKER_ME_LEN         sizeof(OTR_IRC_MARKER_ME) - 1
