@@ -169,6 +169,19 @@ static scram_status process_server_first(SCRAM_SESSION_REC *session, const char 
 		return SCRAM_ERROR;
 	}
 
+	/* RFC 5802 section 5.1: "A client MAY enforce a maximum iteration count."
+	 * Reject values that would cause PKCS5_PBKDF2_HMAC to block the main loop
+	 * for an unreasonable amount of time. 100000 is well above any real-world
+	 * server configuration (typically a few thousand) and bounds the worst-case
+	 * PBKDF2 cost to a fraction of a second on modern hardware. */
+	if (iteration_count > 100000) {
+		session->error = g_strdup_printf("Iteration count too high: %u",
+		                                iteration_count);
+		g_free(server_nonce_b64);
+		g_free(salt);
+		return SCRAM_ERROR;
+	}
+
 	client_nonce_len = strlen(session->client_nonce_b64);
 
 	// The server can append his nonce to the client's nonce
