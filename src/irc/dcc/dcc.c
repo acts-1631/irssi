@@ -364,6 +364,11 @@ static void ctcp_msg_dcc(IRC_SERVER_REC *server, const char *data,
 	if (ignore_check(SERVER(server), nick, addr, target, data, MSGLEVEL_DCC))
 		return;
 
+	/* Cap the CTCP body length concatenated into the signal name; see
+	 * ctcp_msg() in ctcp.c for the rationale. */
+	if (strlen(data) > 256)
+		return;
+
 	str = g_strconcat("ctcp msg dcc ", data, NULL);
 	args = strchr(str+13, ' ');
 	if (args != NULL) *args++ = '\0'; else args = "";
@@ -384,6 +389,11 @@ static void ctcp_reply_dcc(IRC_SERVER_REC *server, const char *data,
 	char *args, *str;
 
 	if (ignore_check(SERVER(server), nick, addr, target, data, MSGLEVEL_DCC))
+		return;
+
+	/* Cap the CTCP body length concatenated into the signal name; see
+	 * ctcp_msg() in ctcp.c for the rationale. */
+	if (strlen(data) > 256)
 		return;
 
 	str = g_strconcat("ctcp reply dcc ", data, NULL);

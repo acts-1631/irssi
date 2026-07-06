@@ -234,6 +234,15 @@ static void ctcp_msg(IRC_SERVER_REC *server, const char *data,
 	if (ignore_check(SERVER(server), nick, addr, target, data, MSGLEVEL_CTCPS))
 		return;
 
+	/* Cap the CTCP body length that is concatenated into the signal name.
+	 * The body comes from a remote user over IRC (PRIVMSG) and is passed
+	 * as the second argument to any matching signal handler, including
+	 * loaded perl scripts. A modest cap limits the attack surface for the
+	 * dynamic-signal-name dispatch and aligns with the convention used for
+	 * CTCP-over-DCC-chat (dcc-chat.c). */
+	if (strlen(data) > 256)
+		return;
+
 	str = g_strconcat("ctcp msg ", data, NULL);
 	args = strchr(str+9, ' ');
 	if (args != NULL) *args++ = '\0'; else args = "";
@@ -252,6 +261,11 @@ static void ctcp_reply(IRC_SERVER_REC *server, const char *data,
 	char *args, *str;
 
 	if (ignore_check(SERVER(server), nick, addr, target, data, MSGLEVEL_CTCPS))
+		return;
+
+	/* Cap the CTCP body length concatenated into the signal name; see
+	 * ctcp_msg() for the rationale. */
+	if (strlen(data) > 256)
 		return;
 
 	str = g_strconcat("ctcp reply ", data, NULL);
