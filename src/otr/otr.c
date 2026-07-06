@@ -615,7 +615,13 @@ static enum otr_msg_status enqueue_otr_fragment(const char *msg, struct otr_peer
 	}
 
 	if (opc->full_msg) {
-		if (msg_len > (opc->msg_size - opc->msg_len)) {
+		/* Grow the buffer unless it already has room for msg_len bytes
+		 * *plus* the NUL terminator written below. Using '>' here (instead
+		 * of '>=') is an off-by-one: when msg_len exactly equals the
+		 * remaining space, no realloc happens, but opc->full_msg[opc->msg_len]
+		 * is still written after copying, one byte past the end of the
+		 * allocation. */
+		if (msg_len >= (opc->msg_size - opc->msg_len)) {
 			char *tmp_ptr;
 
 			/* Realloc memory if there is not enough space. */
