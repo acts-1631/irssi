@@ -615,6 +615,18 @@ static enum otr_msg_status enqueue_otr_fragment(const char *msg, struct otr_peer
 	}
 
 	if (opc->full_msg) {
+		/* Reject the reassembly if appending this fragment would exceed
+		 * the maximum assembled size. Without this check a peer can keep
+		 * the reassembly open forever (fragments never end with '.') and
+		 * grow opc->full_msg without bound, exhausting memory. */
+		if (opc->msg_len + msg_len + 1 > OTR_REASM_MAX_SIZE) {
+			free(opc->full_msg);
+			opc->full_msg = NULL;
+			opc->msg_size = opc->msg_len = 0;
+			ret = OTR_MSG_ERROR;
+			return ret;
+		}
+
 		/* Grow the buffer unless it already has room for msg_len bytes
 		 * *plus* the NUL terminator written below. Using '>' here (instead
 		 * of '>=') is an off-by-one: when msg_len exactly equals the
@@ -674,6 +686,12 @@ static enum otr_msg_status enqueue_otr_fragment(const char *msg, struct otr_peer
 		 */
 		pos = strstr(msg, OTR_MSG_BEGIN_TAG);
 		if (pos && (pos == msg) && msg[msg_len - 1] != OTR_MSG_END_TAG) {
+			/* Reject oversized initial fragment. */
+			if ((msg_len * 2) + 1 > OTR_REASM_MAX_SIZE) {
+				ret = OTR_MSG_ERROR;
+				return ret;
+			}
+
 			/* Allocate full message buffer with an extra for NULL byte. */
 			opc->full_msg = g_new0(char, (msg_len * 2) + 1);
 			if (!opc->full_msg) {

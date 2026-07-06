@@ -54,6 +54,12 @@
 #define OTR_MSG_BEGIN_TAG             "?OTR:"
 #define OTR_MSG_END_TAG               '.'
 
+/* Maximum total size of a reassembled multi-fragment OTR message. Incoming
+ * ?OTR: fragments are concatenated into a per-peer heap buffer until the
+ * end tag is received; this caps that buffer so a peer cannot grow it
+ * without bound by sending fragments that never terminate. */
+#define OTR_REASM_MAX_SIZE            (256 * 1024)
+
 /* IRC /me command marker and len. */
 #define OTR_IRC_MARKER_ME             "/me "
 #define OTR_IRC_MARKER_ME_LEN         sizeof(OTR_IRC_MARKER_ME) - 1
