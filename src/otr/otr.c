@@ -605,6 +605,15 @@ static enum otr_msg_status enqueue_otr_fragment(const char *msg, struct otr_peer
 	/* We are going to use it quite a bit so ease our life a bit. */
 	msg_len = strlen(msg);
 
+	/* An empty fragment carries no data and no end tag. Without this
+	 * guard, the end-tag check on the open-reassembly path indexes
+	 * msg[msg_len - 1]; when msg_len == 0 (size_t) this underflows to
+	 * SIZE_MAX and reads off the page, crashing irssi. */
+	if (msg_len == 0) {
+		ret = opc->full_msg ? OTR_MSG_WAIT_MORE : OTR_MSG_ORIGINAL;
+		return ret;
+	}
+
 	if (opc->full_msg) {
 		if (msg_len > (opc->msg_size - opc->msg_len)) {
 			char *tmp_ptr;
