@@ -539,7 +539,8 @@ static void sig_server_event(IRC_SERVER_REC *server, const char *line,
 
 			if (rec->want_ctcp == 1) {
                         	/* only CTCP for the chatnet where client is connected to will be forwarded */
-                        	if (strstr(rec->proxy_address, server->connrec->chatnet) != NULL) {
+                        	if (server->connrec->chatnet != NULL &&
+                        	    strstr(rec->proxy_address, server->connrec->chatnet) != NULL) {
 					net_sendbuffer_send(rec->handle,
 							    next_line->str, next_line->len);
 					signal_stop();
