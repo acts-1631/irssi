@@ -116,9 +116,19 @@ static void remove_client(CLIENT_REC *rec)
 	g_free(rec->proxy_address);
 	net_sendbuffer_destroy(rec->handle, TRUE);
 	g_source_remove(rec->recv_tag);
+	if (rec->auth_timeout != -1)
+		g_source_remove(rec->auth_timeout);
 	g_free_not_null(rec->nick);
 	g_free_not_null(rec->addr);
 	g_free(rec);
+}
+
+static int sig_client_auth_timeout(CLIENT_REC *client)
+{
+	client->auth_timeout = -1;
+	if (!client->connected)
+		remove_client(client);
+	return 0;
 }
 
 static void proxy_redirect_event(CLIENT_REC *client, const char *command,
@@ -222,6 +232,10 @@ static void handle_client_connect_cmd(CLIENT_REC *client,
 			/* client didn't send us PASS, kill it */
 			remove_client(client);
 		} else {
+			if (client->auth_timeout != -1) {
+				g_source_remove(client->auth_timeout);
+				client->auth_timeout = -1;
+			}
 			signal_emit("proxy client connected", 1, client);
 			printtext(client->server, NULL, MSGLEVEL_CLIENTNOTICE,
 			          "Proxy: Client %s connected",
@@ -471,6 +485,8 @@ static void sig_listen(LISTEN_REC *listen)
 			IRC_SERVER(server_find_chatnet(listen->ircnet));
 	}
 	rec->recv_tag = i_input_add(handle, I_INPUT_READ, (GInputFunction) sig_listen_client, rec);
+	rec->auth_timeout = g_timeout_add(settings_get_time("irssiproxy_timeout"),
+					       (GSourceFunc) sig_client_auth_timeout, rec);
 
 	proxy_clients = g_slist_prepend(proxy_clients, rec);
 	listen->clients = g_slist_prepend(listen->clients, rec);

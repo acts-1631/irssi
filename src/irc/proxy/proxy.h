@@ -22,7 +22,7 @@ typedef struct {
 typedef struct {
 	char *nick, *addr;
 	NET_SENDBUF_REC *handle;
-	int recv_tag;
+	int recv_tag, auth_timeout;
 	char *proxy_address;
 	LISTEN_REC *listen;
 	IRC_SERVER_REC *server;
