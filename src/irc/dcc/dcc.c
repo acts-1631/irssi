@@ -461,13 +461,16 @@ static int dcc_timeout_func(void)
 		DCC_REC *dcc = tmp->data;
 
 		next = tmp->next;
-		if (dcc->tagread == -1 && now > dcc->created && !IS_DCC_SERVER(dcc)) {
+		if (now > dcc->created &&
+		    ((dcc->tagread == -1 && !IS_DCC_SERVER(dcc)) ||
+		     (IS_DCC_SERVER(dcc) && dcc->tagread != -1))) {
 			/* Timed out - don't send DCC REJECT CTCP so CTCP
 			   flooders won't affect us and it really doesn't
 			   matter that much anyway if the other side doen't
 			   get it..
 
-			   We don't want dcc servers to time out. */
+			   Connected DCC SERVER clients must send their first
+			   protocol line before the timeout. */
 			dcc_close(dcc);
 		}
 	}
