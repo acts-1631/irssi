@@ -150,15 +150,24 @@ static void sig_dccget_send(GET_DCC_REC *dcc)
 /* input function: DCC GET received data */
 static void sig_dccget_receive(GET_DCC_REC *dcc)
 {
-	int ret;
+	uoff_t remaining;
+	int ret, read_size;
 
 	if (dcc_get_recv_buffer == NULL) {
 		dcc_get_recv_buffer = g_malloc(DCC_GET_RECV_BUFFER_SIZE);
 	}
 
 	for (;;) {
+		if (dcc->transfd >= dcc->size) {
+			dcc_close(DCC(dcc));
+			return;
+		}
+
+		remaining = dcc->size - dcc->transfd;
+		read_size = remaining > DCC_GET_RECV_BUFFER_SIZE ?
+			DCC_GET_RECV_BUFFER_SIZE : (int) remaining;
 		ret = net_receive(dcc->handle, dcc_get_recv_buffer,
-				  DCC_GET_RECV_BUFFER_SIZE);
+				  read_size);
 		if (ret == 0) break;
 
 		if (ret < 0) {
