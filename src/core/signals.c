@@ -46,6 +46,7 @@ typedef struct {
 void *signal_user_data;
 
 static GHashTable *signals;
+static GHashTable *signals_by_name;
 static Signal *current_emitted_signal;
 static SignalHook *current_emitted_hook;
 
@@ -65,6 +66,7 @@ static int signal_unref_full(Signal *rec, int remove)
 			signal_get_id_str(rec->id));
 	}
 
+	g_hash_table_remove(signals_by_name, signal_get_id_str(rec->id));
 	if (remove)
 		g_hash_table_remove(signals, GINT_TO_POINTER(rec->id));
         g_free(rec);
@@ -94,10 +96,14 @@ void signal_add_full_id(const char *module, int priority,
 			int signal_id, SIGNAL_FUNC func, void *user_data)
 {
 	Signal *signal;
+	const char *signal_name;
         SignalHook *hook, **tmp;
 
 	g_return_if_fail(signal_id >= 0);
 	g_return_if_fail(func != NULL);
+
+	signal_name = signal_get_id_str(signal_id);
+	g_return_if_fail(signal_name != NULL);
 
 	signal = g_hash_table_lookup(signals, GINT_TO_POINTER(signal_id));
 	if (signal == NULL) {
@@ -105,6 +111,7 @@ void signal_add_full_id(const char *module, int priority,
 		signal = g_new0(Signal, 1);
 		signal->id = signal_id;
 		g_hash_table_insert(signals, GINT_TO_POINTER(signal_id), signal);
+		g_hash_table_insert(signals_by_name, (void *) signal_name, signal);
 	}
 
 	hook = g_new0(SignalHook, 1);
@@ -274,13 +281,11 @@ int signal_emit(const char *signal, int params, ...)
 {
 	Signal *rec;
 	va_list va;
-	int signal_id;
 
+	g_return_val_if_fail(signal != NULL, FALSE);
 	g_return_val_if_fail(params >= 0 && params <= SIGNAL_MAX_ARGUMENTS, FALSE);
 
-	signal_id = signal_get_uniq_id(signal);
-
-	rec = g_hash_table_lookup(signals, GINT_TO_POINTER(signal_id));
+	rec = g_hash_table_lookup(signals_by_name, signal);
 	if (rec != NULL) {
 		va_start(va, params);
 		signal_emit_real(rec, params, va, rec->hooks);
@@ -412,6 +417,8 @@ void signals_remove_module(const char *module)
 void signals_init(void)
 {
 	signals = g_hash_table_new(NULL, NULL);
+	signals_by_name = g_hash_table_new((GHashFunc) g_str_hash,
+				    (GCompareFunc) g_str_equal);
 }
 
 static void signal_free(void *key, Signal *rec)
@@ -434,6 +441,7 @@ void signals_deinit(void)
         g_hash_table_foreach(signals, (GHFunc) signal_free, NULL);
 	g_hash_table_foreach_remove(signals, (GHRFunc) signal_hash_unref, NULL);
 	g_hash_table_destroy(signals);
+	g_hash_table_destroy(signals_by_name);
 
 	module_uniq_destroy("signals");
 }
